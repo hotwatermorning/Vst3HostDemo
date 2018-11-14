@@ -1,0 +1,11 @@
+language: cpp
+os: osx
+osx_image: xcode9.3
+script: cd gradle && ./gradlew build_all -Pconfig=Release
+deploy:
+  provider: releases
+  api_key:
+    secure: WF8SQiPkzmPbT2XycpLt9jN4avZxEtKtnZK9kHQ+IPzQxX9J7/9iKfUdDcegILYApJ8uuQy8gk7QTxYRxIKXjH9rfYxP5C+xEILQFaYqvxaHrR2WszlwM05klVrRRAGW6Ohh/SNbZ+Jt2oL5XCh3zRPqeUHplEDORHG/WrTOwpBWE7gcBRzhf+KgJxjAlrbcT1cmc8USvXoXBxC8r53vyDWPyHIEPk7uIU7M4iQYglpjm2c1CuyQ7TlZaIaTXKFRQoXjKTRoayOVKdWuMQ9Zu8rs/xM9eCMjjPvQ7wvtpPDHvzsux0Bia5OyBF1StqvQ6QBPdDieN1e7nWs8qy3xt/Vsqy9lwipAnizrxJ40sm4mSTAiC0XfItQtSzZ6P0i31sJe4Xr/cPWw0gKBiwDZPukN5SJF0C4yDQmZbcJ3nRXcyhOzsNctqxQ4oL7hyk8wFIasy1djwPSYrwjTG5LI7xvnvFzfhn+f63MjawDPAJs0G8NGw5Kd8xMTR4lLLhWp4fcYArO8+wTqm/TKzq0nOoEMQVnWybWVmkvf9lTCVFsBW5g3uTSE+agkkUGffUcsC/E7njTPiA8uw4eF6Dc/TX7sXKrb+q683vpldggDO7g9z4BS1Yfz5kOL/6KjFo9iTua2a1An0wRHJS7gEhioDycAlA2wNjb93yswWFxAO48=
+  file: "$TRAVIS_BUILD_DIR/build_release/*.{app,exe}"
+  on:
+    repo: hotwatermorning/Vst3HostDemo
