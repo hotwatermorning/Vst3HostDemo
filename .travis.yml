@@ -1,7 +1,11 @@
 language: cpp
 os: osx
 osx_image: xcode9.3
+install:
+  - brew install ccache
+  - export PATH="/usr/local/opt/ccache/libexec:$PATH"
 script: cd gradle && ./gradlew build_all -Pconfig=Release
+cache: ccache
 deploy:
   provider: releases
   api_key:
