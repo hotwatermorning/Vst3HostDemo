@@ -1,3 +1,6 @@
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+
 def ensure_property(def obj, String keyname, List candidates, Integer default_value_index = 0)
 {
   if(!obj.hasProperty(keyname)) {
@@ -12,6 +15,7 @@ ensure_property(project, "config", ["Debug", "Release"])
 // Property about ccache.
 // (note: ccache is not used if not installed even if this property is true.)
 ensure_property(project, "use_ccache", ["true", "false"])
+ensure_property(project, "show_stdout_for_submodules", ["true", "false"])
 
 def isWindows() {
   return System.properties['os.name'].toLowerCase().startsWith("windows")
@@ -25,7 +29,9 @@ ext {
                          ? "-DCMAKE_C_COMPILER_LAUNCHER=\"${ccache_path}\" -DCMAKE_CXX_COMPILER_LAUNCHER=\"${ccache_path}\""
                          : "")
   ccache_envvars = [CC: "${ccache_path} clang", CXX: "${ccache_path} clang++"]
+  show_stdout_for_submodules = (project.show_stdout_for_submodules == "true")
 }
+
 
 // println "has ccache: ${has_ccache}"
 // println "ccache path: ${ccache_path}"
@@ -85,7 +91,7 @@ def tokenize(String data)
 //! @param params is executable and the parameters which are passed to the executable.
 //! @param working_dir is the working directory for the executable.
 //! @param env_vars is environment variables as a list of key:value pair. this parameter may be nil.
-def execute_with_exit_code(def params, String working_dir = ".", def env_vars = [:])
+def execute_with_exit_code(def params, String working_dir = ".", def env_vars = [:], def show_stdout = true)
 {
   if(isWindows()) {
     params = "cmd /c chcp 65001 & " + params.toString()
@@ -96,7 +102,8 @@ def execute_with_exit_code(def params, String working_dir = ".", def env_vars = 
   def tmp = tokenize(params)
   println "${tmp} @ '${working_dir}' (${env_vars})"
 
-  def pb = new ProcessBuilder(tokenize(params)).redirectErrorStream(true)
+  def pb = new ProcessBuilder(tokenize(params))
+
   pb.directory(file(working_dir).getAbsoluteFile())
 
   if(env_vars) {
@@ -105,14 +112,36 @@ def execute_with_exit_code(def params, String working_dir = ".", def env_vars = 
   }
 
   def process = pb.start()
-  process.inputStream.eachLine { println it }
-  return process.waitFor()
+
+  def redir_stdout = Executors.newSingleThreadExecutor()
+  def redir_stderr = Executors.newSingleThreadExecutor()
+
+  redir_stdout.execute {
+    process.inputStream.eachLine {
+      if(show_stdout) {
+        println it
+      }
+    }
+  }
+
+  redir_stderr.execute {
+    process.errorStream.eachLine { println it }
+  }
+
+  def exit_code = process.waitFor()
+
+  redir_stdout.shutdown();
+  redir_stderr.shutdown();
+  redir_stdout.awaitTermination(1, TimeUnit.MINUTES)
+  redir_stderr.awaitTermination(1, TimeUnit.MINUTES)
+
+  return exit_code
 }
 
 //! similar to execute_with_exit_code but this function fails if the target command ends with exit code of non zero.
-def execute(def params, String working_dir = ".", def env_vars = [:])
+def execute(def params, String working_dir = ".", def env_vars = [:], def show_stdout = true)
 {
-  def exit_code = execute_with_exit_code(params, working_dir, env_vars)
+  def exit_code = execute_with_exit_code(params, working_dir, env_vars, show_stdout)
   assert (exit_code == 0)
 }
 
@@ -130,10 +159,11 @@ task build_protobuf {
     execute("./autogen.sh", "../ext/protobuf")
     execute("../configure --disable-shared --prefix=${build_dir}/install",
             build_dir,
-            ccache_envvars
+            ccache_envvars,
+            show_stdout_for_submodules
             )
-    execute("make", build_dir)
-    execute("make install", build_dir)
+    execute("make", build_dir, [:], show_stdout_for_submodules)
+    execute("make install", build_dir, [:], show_stdout_for_submodules)
   }
 }
 build_protobuf.mustRunAfter update_submodules
@@ -143,8 +173,8 @@ task build_portaudio {
   doLast {
     def portaudio_build_dir = file("../ext/portaudio/${build_dir_name}").getAbsolutePath()
     execute("mkdir -p ${portaudio_build_dir}")
-    execute("cmake -DPA_BUILD_STATIC=ON -DCMAKE_BUILD_TYPE=${project.config} ${cmake_ccache_config} ..", portaudio_build_dir)
-    execute("make -j", portaudio_build_dir)
+    execute("cmake -DPA_BUILD_STATIC=ON -DCMAKE_BUILD_TYPE=${project.config} ${cmake_ccache_config} ..", portaudio_build_dir, [:], show_stdout_for_submodules)
+    execute("make -j", portaudio_build_dir, [:], show_stdout_for_submodules)
   }
 }
 build_portaudio.mustRunAfter update_submodules
@@ -155,8 +185,8 @@ task build_vst3sdk {
     // vst3sdk
     def vst3sdk_build_dir = file("../ext/vst3sdk/${build_dir_name}").getAbsolutePath()
     execute("mkdir -p ${vst3sdk_build_dir}")
-    execute("cmake -DCMAKE_BUILD_TYPE=${project.config} ${cmake_ccache_config} ..", vst3sdk_build_dir)
-    execute("make -j", vst3sdk_build_dir)
+    execute("cmake -DCMAKE_BUILD_TYPE=${project.config} ${cmake_ccache_config} ..", vst3sdk_build_dir, [:], show_stdout_for_submodules)
+    execute("make -j", vst3sdk_build_dir, [:], show_stdout_for_submodules)
   }
 }
 build_vst3sdk.mustRunAfter update_submodules
@@ -181,10 +211,11 @@ task build_wxwidgets {
             '--enable-stl --enable-std_containers --enable-std_iostreams --enable-std_string ' +
             "--disable-shared --enable-unicode ${debug_flags} --with-cxx=14 --prefix=${wx_build_dir}/install",
             wx_build_dir,
-            ccache_envvars
+            ccache_envvars,
+            show_stdout_for_submodules
             )
-    execute("make", wx_build_dir)
-    execute("make install", wx_build_dir)
+    execute("make", wx_build_dir, [:], show_stdout_for_submodules)
+    execute("make install", wx_build_dir, [:], show_stdout_for_submodules)
   }
 }
 build_wxwidgets.mustRunAfter update_submodules
@@ -193,8 +224,8 @@ task build_fmtlib {
   doLast {
     def build_dir = file("../ext/fmt/${build_dir_name}").getAbsolutePath()
     execute("mkdir -p ${build_dir}")
-    execute("cmake -DCMAKE_BUILD_TYPE=${project.config} ${cmake_ccache_config} ..", build_dir)
-    execute("make -j", build_dir)
+    execute("cmake -DCMAKE_BUILD_TYPE=${project.config} ${cmake_ccache_config} ..", build_dir, [:], show_stdout_for_submodules)
+    execute("make -j", build_dir, [:], show_stdout_for_submodules)
   }
 }
 build_fmtlib.mustRunAfter update_submodules
@@ -203,7 +234,7 @@ task compile_schemas {
   doLast {
     execute("mkdir -p schema/cpp", "..")
     file("../schema").eachFileMatch(~/.*\.proto$/) {
-      execute("./ext/protobuf/${build_dir_name}/install/bin/protoc -Ischema --cpp_out=schema/cpp ${it.getName()}", "..")
+      execute("./ext/protobuf/${build_dir_name}/install/bin/protoc -Ischema --cpp_out=schema/cpp ${it.getName()}", "..", [:], show_stdout_for_submodules)
     }
   }
 }
