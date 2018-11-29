@@ -1,10 +1,12 @@
 language: cpp
 os: osx
 osx_image: xcode9.3
+env:
+  - TERM=dumb
 install:
   - brew install ccache
   - export PATH="/usr/local/opt/ccache/libexec:$PATH"
-script: cd gradle && ./gradlew build_all -Pshow_stdout_for_submodules=false -Pconfig=Release
+script: cd gradle && ./gradlew --scan build_all -Pshow_stdout_for_submodules=false -Pconfig=Release
 cache: ccache
 deploy:
   provider: releases
