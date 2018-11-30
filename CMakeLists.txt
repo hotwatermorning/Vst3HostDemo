@@ -31,6 +31,8 @@ if(NOT DEFINED CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Debug")
 endif()
 
+option(USE_SYSTEM_LIBRARIES OFF)
+
 ####################################################################
 # configure project
 ####################################################################
@@ -52,17 +54,39 @@ else()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_NDEBUG")
 endif()
 
-set(WX_CONFIG_PATH "./ext/wxWidgets/${BUILD_DIR_NAME}/install/bin/wx-config")
-get_filename_component(WX_CONFIG_PATH ${WX_CONFIG_PATH} ABSOLUTE)
-message("WX_CONFIG_PATH: ${WX_CONFIG_PATH}")
+if(USE_SYSTEM_LIBRARIES)
+  find_program(WX_CONFIG "wx-config")
+else()
+  find_program(WX_CONFIG "wx-config" HINTS "./ext/wxWidgets/${BUILD_DIR_NAME}/install/bin")
+endif()
 
-execute_process(COMMAND ${WX_CONFIG_PATH} "--cxxflags" OUTPUT_VARIABLE WX_CXX_FLAGS)
-execute_process(COMMAND ${WX_CONFIG_PATH} "--libs base,core" OUTPUT_VARIABLE WX_LIB_FLAGS)
+message("WX_CONFIG_PATH: ${WX_CONFIG}")
 
+execute_process(COMMAND ${WX_CONFIG} "--cxxflags" OUTPUT_VARIABLE WX_CXX_FLAGS)
+execute_process(COMMAND ${WX_CONFIG} "--libs base,core" OUTPUT_VARIABLE WX_LIB_FLAGS)
+
+message("WX_CXX_FLAGS ${WX_CXX_FLAGS}")
 message("WX_LIB_FLAGS ${WX_LIB_FLAGS}")
 
-set(CMAKE_CXX_FLAGS "-DHAVE_TYPE_TRAITS=1 ${WX_CXX_FLAGS} ${CMAKE_CXX_FLAGS} -std=c++17 -stdlib=libc++")
+set(CMAKE_CXX_FLAGS "-DHAVE_TYPE_TRAITS=1 ${WX_CXX_FLAGS} ${CMAKE_CXX_FLAGS} -std=c++17 -Werror=return-type -stdlib=libc++")
 set(CMAKE_EXE_LINKER_FLAGS "${WX_LIB_FLAGS} ${CMAKE_EXE_LINKER_FLAGS}")
+
+find_package(PkgConfig REQUIRED)
+
+function(pkg_check_modules_custom PREFIX MODULE PKG_CONFIG_PATH)
+  get_filename_component(PKG_CONFIG_PATH ${PKG_CONFIG_PATH} ABSOLUTE)
+  if(NOT ${USE_SYSTEM_LIBRARIES})
+    set(ENV{PKG_CONFIG_PATH} "${PKG_CONFIG_PATH}")
+  endif()
+  pkg_check_modules(${PREFIX} REQUIRED "${MODULE}")
+  message("${PREFIX}: ${${PREFIX}_INCLUDE_DIRS} ${${PREFIX}_LIBRARIES} ${${PREFIX}_LIBRARY_DIRS}")
+endfunction()
+
+pkg_check_modules_custom(PORTAUDIO portaudio-2.0 "./ext/portaudio/build_debug")
+pkg_check_modules_custom(PROTOBUF protobuf "./ext/protobuf/build_debug")
+pkg_check_modules_custom(FMTLIB fmt "./ext/fmt/build_debug")
+find_library(VST3_SDK_LIB "sdk" PATHS "./ext/vst3sdk/${BUILD_DIR_NAME}/lib/${CAPITAL_CONFIG_NAME}")
+find_library(VST3_BASE_LIB "base" PATHS "./ext/vst3sdk/${BUILD_DIR_NAME}/lib/${CAPITAL_CONFIG_NAME}")
 
 # set source directories
 set(SOURCE_DIR_LIST
@@ -131,31 +155,29 @@ endif()
 set_target_properties(${PROJECT_NAME} PROPERTIES XCODE_ATTRIBUTE_GCC_PREFIX_HEADER "Vst3HostDemo/prefix.hpp")
 set_target_properties(${PROJECT_NAME} PROPERTIES XCODE_ATTRIBUTE_GCC_PRECOMPILE_PREFIX_HEADER "YES")
 
-find_library(VST3_SDK_LIB "sdk" PATHS "./ext/vst3sdk/${BUILD_DIR_NAME}/lib/${CAPITAL_CONFIG_NAME}")
-find_library(VST3_BASE_LIB "base" PATHS "./ext/vst3sdk/${BUILD_DIR_NAME}/lib/${CAPITAL_CONFIG_NAME}")
-find_library(PORTAUDIO_LIB "libportaudio.a" "./ext/portaudio/${BUILD_DIR_NAME}")
-find_library(FMT_LIB "fmt" NAMES "fmtd" PATHS "./ext/fmt/${BUILD_DIR_NAME}")
-find_library(PROTOBUF_LIB "protobuf" PATHS "./ext/protobuf/${BUILD_DIR_NAME}/install/lib" NO_CMAKE_PATH NO_DEFAULT_PATH NO_SYSTEM_ENVIRONMENT_PATH)
-
-message("PROTOBUF: ${PROTOBUF_LIB}")
-
 include_directories(
   "./Vst3HostDemo"
   "./ext/vst3sdk"
-  "./ext/portaudio/include"
-  "./ext/fmt/include"
-  "./ext/json/single_include"
   "./schema/cpp"
-  "./ext/protobuf/${BUILD_DIR_NAME}/install/include"
+  ${PORTAUDIO_INCLUDE_DIRS}
+  ${PROTOBUF_INCLUDE_DIRS}
+  ${FMTLIB_INCLUDE_DIRS}
   )
+
+link_directories(
+  ${PORTAUDIO_LIBRARY_DIRS}
+  ${PROTOBUF_LIBRARY_DIRS}
+  ${FMTLIB_LIBRARY_DIRS}
+  )
+
 
 target_link_libraries(
   ${PROJECT_NAME}
-  ${PORTAUDIO_LIB}
   ${VST3_SDK_LIB}
   ${VST3_BASE_LIB}
-  ${FMT_LIB}
-  ${PROTOBUF_LIB}
+  ${PORTAUDIO_LIBRARIES}
+  ${PROTOBUF_LIBRARIES}
+  ${FMTLIB_LIBRARIES}
   "-framework CoreServices"
   "-framework CoreFoundation"
   "-framework AudioUnit"

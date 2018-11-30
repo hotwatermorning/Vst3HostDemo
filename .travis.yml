@@ -4,7 +4,7 @@ osx_image: xcode9.3
 env:
   - TERM=dumb
 install:
-  - brew install ccache
+  - brew install ccache portaudio wxwidgets protobuf fmt
   - export PATH="/usr/local/opt/ccache/libexec:$PATH"
 script: cd gradle && ./gradlew --scan build_all -Pconfig=Release
 cache: ccache
