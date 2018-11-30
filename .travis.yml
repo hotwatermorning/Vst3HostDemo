@@ -9,6 +9,7 @@ cache:
   ccache: true
   directories:
     - $HOME/Library/Caches/Homebrew
+    - $TRAVIS_BUILD_DIR/ext/*/build_release/*
 install:
   - brew uninstall python
   - brew install ccache portaudio wxwidgets protobuf fmt

@@ -11,7 +11,6 @@ def ensure_property(def obj, String keyname, List candidates, Integer default_va
 }
 
 def getenv(String key) { return java.lang.System.getenv()[key] }
-def isCI() { return getenv("CI") != null }
 def isWindows() { return System.properties['os.name'].toLowerCase().startsWith("windows") }
 
 // Property about build configuration
@@ -20,15 +19,6 @@ ensure_property(project, "config", ["Debug", "Release"])
 // (note: ccache is not used if not installed even if this property is true.)
 ensure_property(project, "use_ccache", ["true", "false"])
 ensure_property(project, "show_stdout_for_submodules", ["true", "false"])
-ensure_property(project, "use_system_wxwidgets", ["false", "true"])
-ensure_property(project, "use_system_portaudio", ["false", "true"])
-ensure_property(project, "use_system_protobuf", ["false", "true"])
-
-if(isCI()) {
-  project.use_system_wxwidgets = "true"
-  project.use_system_portaudio = "true"
-  project.use_system_protobuf = "true"
-}
 
 ext {
   build_dir_name = "build_${project.config.toLowerCase()}"
@@ -162,9 +152,8 @@ task update_submodules {
 
 task build_protobuf {
   doLast {
-    if(project.use_system_protobuf == "true") { return }
-
     def build_dir = file("../ext/protobuf/${build_dir_name}").getAbsolutePath()
+    if(file(build_dir).exists()) { return }
 
     execute("mkdir -p ${build_dir}")
     execute("./autogen.sh", "../ext/protobuf")
@@ -182,9 +171,9 @@ build_protobuf.mustRunAfter update_submodules
 
 task build_portaudio {
   doLast {
-    if(project.use_system_portaudio == "true") { return }
-
     def build_dir = file("../ext/portaudio/${build_dir_name}").getAbsolutePath()
+    if(file(build_dir).exists()) { return }
+
     execute("mkdir -p ${build_dir}")
     execute("cmake -DCMAKE_INSTALL_PREFIX=${build_dir}/install -DPA_BUILD_STATIC=ON -DCMAKE_BUILD_TYPE=${project.config} ${cmake_ccache_config} ..", build_dir, [:], show_stdout_for_submodules)
     execute("make -j", build_dir, [:], show_stdout_for_submodules)
@@ -197,6 +186,8 @@ build_portaudio.mustRunAfter update_submodules
 task build_vst3sdk {
   doLast {
     def build_dir = file("../ext/vst3sdk/${build_dir_name}").getAbsolutePath()
+    if(file(build_dir).exists()) { return }
+
     execute("mkdir -p ${build_dir}")
     // VST3SDKは、makeのinstallターゲットを用意しない
     execute("cmake -DCMAKE_BUILD_TYPE=${project.config} ${cmake_ccache_config} ..", build_dir, [:], show_stdout_for_submodules)
@@ -207,10 +198,8 @@ build_vst3sdk.mustRunAfter update_submodules
 
 task build_wxwidgets {
   doLast {
-    if(project.use_system_wxwidgets == "true") { return }
-
-    // wxwidgets
-    def wx_build_dir = file("../ext/wxWidgets/${build_dir_name}").getAbsolutePath()
+    def build_dir = file("../ext/wxWidgets/${build_dir_name}").getAbsolutePath()
+    if(file(build_dir + "/install").exists()) { return }
 
     def debug_flags = ""
     if(project.config == "Debug") {
@@ -218,20 +207,20 @@ task build_wxwidgets {
     }
 
     execute("./autogen.sh", "../ext/wxWidgets")
-    execute("mkdir -p ${wx_build_dir}")
+    execute("mkdir -p ${build_dir}")
     execute('../configure CXXFLAGS="-stdlib=libc++ -DHAVE_TYPE_TRAITS" OBJCXXFLAGS="-stdlib=libc++" ' +
             'CPPFLAGS="-stdlib=libc++" LDFLAGS="-stdlib=libc++" ' +
             '--with-macosx-version-min=10.7 --with-cocoa ' +
             '--with-libjpeg=builtin --with-libpng=builtin --with-regex=builtin --with-libtiff=builtin ' +
             '--with-zlib=builtin --with-expat=builtin ' +
             '--enable-stl --enable-std_containers --enable-std_iostreams --enable-std_string ' +
-            "--disable-shared --enable-unicode ${debug_flags} --with-cxx=14 --prefix=${wx_build_dir}/install",
-            wx_build_dir,
+            "--disable-shared --enable-unicode ${debug_flags} --with-cxx=14 --prefix=${build_dir}/install",
+            build_dir,
             ccache_envvars,
             show_stdout_for_submodules
             )
-    execute("make", wx_build_dir, [:], show_stdout_for_submodules)
-    execute("make install", wx_build_dir, [:], show_stdout_for_submodules)
+    execute("make", build_dir, [:], show_stdout_for_submodules)
+    execute("make install", build_dir, [:], show_stdout_for_submodules)
   }
 }
 build_wxwidgets.mustRunAfter update_submodules
@@ -239,6 +228,8 @@ build_wxwidgets.mustRunAfter update_submodules
 task build_fmtlib {
   doLast {
     def build_dir = file("../ext/fmt/${build_dir_name}").getAbsolutePath()
+    if(file(build_dir).exists()) { return }
+
     execute("mkdir -p ${build_dir}")
     execute("cmake -DCMAKE_INSTALL_PREFIX=${build_dir}/install -DCMAKE_BUILD_TYPE=${project.config} ${cmake_ccache_config} ..", build_dir, [:], show_stdout_for_submodules)
     execute("make -j", build_dir, [:], show_stdout_for_submodules)
@@ -249,14 +240,11 @@ build_fmtlib.mustRunAfter update_submodules
 
 task compile_schemas {
   doLast {
+    def protoc = "./ext/protobuf/${build_dir_name}/install/bin/protoc"
+    assert(file(protoc).exists())
+
     execute("mkdir -p schema/cpp", "..")
     file("../schema").eachFileMatch(~/.*\.proto$/) {
-      def protoc = "";
-      if(project.use_system_protoc == "true") {
-        protoc = "protoc"
-      } else {
-        protoc = "./ext/protobuf/${build_dir_name}/install/bin/protoc"
-      }
 
       execute("${protoc} -Ischema --cpp_out=schema/cpp ${it.getName()}", "..", [:], show_stdout_for_submodules)
     }
@@ -272,7 +260,7 @@ task prepare_app {
   doLast {
     def build_dir = file("../${build_dir_name}").getAbsolutePath()
     execute("mkdir -p ${build_dir}")
-    execute("cmake -GXcode -DUSE_SYSTEM_LIBRARIES=${isCI()?"ON":"OFF"} -DCMAKE_BUILD_TYPE=${project.config} ${cmake_ccache_config} ..", build_dir)
+    execute("cmake -GXcode -DCMAKE_BUILD_TYPE=${project.config} ${cmake_ccache_config} ..", build_dir)
   }
 }
 prepare_app.mustRunAfter build_submodules

@@ -31,8 +31,6 @@ if(NOT DEFINED CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Debug")
 endif()
 
-option(USE_SYSTEM_LIBRARIES OFF)
-
 ####################################################################
 # configure project
 ####################################################################
@@ -54,11 +52,7 @@ else()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_NDEBUG")
 endif()
 
-if(USE_SYSTEM_LIBRARIES)
-  find_program(WX_CONFIG "wx-config")
-else()
-  find_program(WX_CONFIG "wx-config" HINTS "./ext/wxWidgets/${BUILD_DIR_NAME}/install/bin")
-endif()
+find_program(WX_CONFIG "wx-config" HINTS "./ext/wxWidgets/${BUILD_DIR_NAME}/install/bin")
 
 message("WX_CONFIG_PATH: ${WX_CONFIG}")
 
@@ -75,9 +69,7 @@ find_package(PkgConfig REQUIRED)
 
 function(pkg_check_modules_custom PREFIX MODULE PKG_CONFIG_PATH)
   get_filename_component(PKG_CONFIG_PATH ${PKG_CONFIG_PATH} ABSOLUTE)
-  if(NOT ${USE_SYSTEM_LIBRARIES})
-    set(ENV{PKG_CONFIG_PATH} "${PKG_CONFIG_PATH}")
-  endif()
+  set(ENV{PKG_CONFIG_PATH} "${PKG_CONFIG_PATH}")
   pkg_check_modules(${PREFIX} REQUIRED "${MODULE}")
   message("${PREFIX}: ${${PREFIX}_INCLUDE_DIRS} ${${PREFIX}_LIBRARIES} ${${PREFIX}_LIBRARY_DIRS}")
 endfunction()
@@ -158,6 +150,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES XCODE_ATTRIBUTE_GCC_PRECOMPILE_
 include_directories(
   "./Vst3HostDemo"
   "./ext/vst3sdk"
+  "./ext/variant/include"
   "./schema/cpp"
   ${PORTAUDIO_INCLUDE_DIRS}
   ${PROTOBUF_INCLUDE_DIRS}
