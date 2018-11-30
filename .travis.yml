@@ -3,11 +3,16 @@ os: osx
 osx_image: xcode9.3
 env:
   - TERM=dumb
+before_cache:
+  - brew cleanup
+cache:
+  - ccache
+  directories:
+    - $HOME/Library/Caches/Homebrew
 install:
   - brew install ccache portaudio wxwidgets protobuf fmt
   - export PATH="/usr/local/opt/ccache/libexec:$PATH"
 script: cd gradle && ./gradlew --scan build_all -Pconfig=Release
-cache: ccache
 deploy:
   provider: releases
   api_key:
