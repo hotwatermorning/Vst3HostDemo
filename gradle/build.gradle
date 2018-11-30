@@ -24,17 +24,9 @@ ext {
   build_dir_name = "build_${project.config.toLowerCase()}"
   has_ccache = (project.use_ccache == "true" ? "which ccache".execute().waitFor() == 0 : false)
   ccache_path = (has_ccache ? "which ccache".execute().text.trim() : "")
-  cmake_ccache_config = (has_ccache
-                         ? "-DCMAKE_C_COMPILER_LAUNCHER=\"${ccache_path}\" -DCMAKE_CXX_COMPILER_LAUNCHER=\"${ccache_path}\""
-                         : "")
-  ccache_envvars = [CC: "${ccache_path} clang", CXX: "${ccache_path} clang++"]
+  ccache_envvars = (has_ccache ? [CC: "${ccache_path} clang", CXX: "${ccache_path} clang++"] : [:])
   show_stdout_for_submodules = (project.show_stdout_for_submodules == "true")
 }
-
-
-// println "has ccache: ${has_ccache}"
-// println "ccache path: ${ccache_path}"
-// println "cmake ccache config: ${cmake_ccache_config}"
 
 // 渡された文字列を空白で区切って、単語のリストとして返す。
 // ただし、引用符(`'` or `"`)で囲まれた範囲は空白で区切らずに一つの単語とみなす。
@@ -175,7 +167,7 @@ task build_portaudio {
     if(file(build_dir).exists()) { return }
 
     execute("mkdir -p ${build_dir}")
-    execute("cmake -DCMAKE_INSTALL_PREFIX=${build_dir}/install -DPA_BUILD_STATIC=ON -DCMAKE_BUILD_TYPE=${project.config} ${cmake_ccache_config} ..", build_dir, [:], show_stdout_for_submodules)
+    execute("cmake -DCMAKE_INSTALL_PREFIX=${build_dir}/install -DPA_BUILD_STATIC=ON -DCMAKE_BUILD_TYPE=${project.config} ..", build_dir, ccache_envvars, show_stdout_for_submodules)
     execute("make -j", build_dir, [:], show_stdout_for_submodules)
     execute("make install", build_dir, [:], show_stdout_for_submodules)
   }
@@ -190,7 +182,7 @@ task build_vst3sdk {
 
     execute("mkdir -p ${build_dir}")
     // VST3SDKは、makeのinstallターゲットを用意しない
-    execute("cmake -DCMAKE_BUILD_TYPE=${project.config} ${cmake_ccache_config} ..", build_dir, [:], show_stdout_for_submodules)
+    execute("cmake -DCMAKE_BUILD_TYPE=${project.config} ..", build_dir, ccache_envvars, show_stdout_for_submodules)
     execute("make -j", build_dir, [:], show_stdout_for_submodules)
   }
 }
@@ -231,7 +223,7 @@ task build_fmtlib {
     if(file(build_dir).exists()) { return }
 
     execute("mkdir -p ${build_dir}")
-    execute("cmake -DCMAKE_INSTALL_PREFIX=${build_dir}/install -DCMAKE_BUILD_TYPE=${project.config} ${cmake_ccache_config} ..", build_dir, [:], show_stdout_for_submodules)
+    execute("cmake -DCMAKE_INSTALL_PREFIX=${build_dir}/install -DCMAKE_BUILD_TYPE=${project.config} ..", build_dir, ccache_envvars, show_stdout_for_submodules)
     execute("make -j", build_dir, [:], show_stdout_for_submodules)
     execute("make install", build_dir, [:], show_stdout_for_submodules)
   }
@@ -260,7 +252,7 @@ task prepare_app {
   doLast {
     def build_dir = file("../${build_dir_name}").getAbsolutePath()
     execute("mkdir -p ${build_dir}")
-    execute("cmake -GXcode -DCMAKE_BUILD_TYPE=${project.config} ${cmake_ccache_config} ..", build_dir)
+    execute("cmake -GXcode -DCMAKE_BUILD_TYPE=${project.config} ..", build_dir)
   }
 }
 prepare_app.mustRunAfter build_submodules

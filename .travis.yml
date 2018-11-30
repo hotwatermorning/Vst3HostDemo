@@ -11,8 +11,7 @@ cache:
     - $HOME/Library/Caches/Homebrew
     - $TRAVIS_BUILD_DIR/ext/*/build_release/*
 install:
-  - brew uninstall python
-  - brew install ccache portaudio wxwidgets protobuf fmt
+  - brew install ccache
   - export PATH="/usr/local/opt/ccache/libexec:$PATH"
 script: cd gradle && ./gradlew --scan build_all -Pconfig=Release
 deploy:
