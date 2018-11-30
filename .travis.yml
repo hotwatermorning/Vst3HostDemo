@@ -10,6 +10,7 @@ cache:
   directories:
     - $HOME/Library/Caches/Homebrew
 install:
+  - brew uninstall python
   - brew install ccache portaudio wxwidgets protobuf fmt
   - export PATH="/usr/local/opt/ccache/libexec:$PATH"
 script: cd gradle && ./gradlew --scan build_all -Pconfig=Release
