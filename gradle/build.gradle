@@ -154,7 +154,7 @@ task build_protobuf {
             ccache_envvars,
             show_stdout_for_submodules
             )
-    execute("make -j", build_dir, [:], show_stdout_for_submodules)
+    execute("make", build_dir, [:], show_stdout_for_submodules)
     execute("make install", build_dir, [:], show_stdout_for_submodules)
   }
 }
