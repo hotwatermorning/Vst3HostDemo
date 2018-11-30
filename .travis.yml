@@ -6,7 +6,7 @@ env:
 before_cache:
   - brew cleanup
 cache:
-  - ccache
+  ccache: true
   directories:
     - $HOME/Library/Caches/Homebrew
 install:
