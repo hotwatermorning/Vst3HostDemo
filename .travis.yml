@@ -13,7 +13,11 @@ cache:
 install:
   - brew install ccache
   - export PATH="/usr/local/opt/ccache/libexec:$PATH"
+before_script:
+  - ccache -s
 script: cd gradle && ./gradlew --scan build_all -Pconfig=Release
+after_script:
+  - ccache -s
 deploy:
   provider: releases
   api_key:
