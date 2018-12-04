@@ -65,20 +65,11 @@ message("WX_LIB_FLAGS ${WX_LIB_FLAGS}")
 set(CMAKE_CXX_FLAGS "-DHAVE_TYPE_TRAITS=1 ${WX_CXX_FLAGS} ${CMAKE_CXX_FLAGS} -std=c++17 -Werror=return-type -stdlib=libc++")
 set(CMAKE_EXE_LINKER_FLAGS "${WX_LIB_FLAGS} ${CMAKE_EXE_LINKER_FLAGS}")
 
-find_package(PkgConfig REQUIRED)
-
-function(pkg_check_modules_custom PREFIX MODULE PKG_CONFIG_PATH)
-  get_filename_component(PKG_CONFIG_PATH ${PKG_CONFIG_PATH} ABSOLUTE)
-  set(ENV{PKG_CONFIG_PATH} "${PKG_CONFIG_PATH}")
-  pkg_check_modules(${PREFIX} REQUIRED NO_CMAKE_PATH NO_CMAKE_ENVIRONMENT_PATH "${MODULE}")
-  message("${PREFIX}: ${${PREFIX}_INCLUDE_DIRS} ${${PREFIX}_LIBRARIES} ${${PREFIX}_LIBRARY_DIRS}")
-endfunction()
-
-pkg_check_modules_custom(PORTAUDIO portaudio-2.0 "./ext/portaudio/${BUILD_DIR_NAME}")
-pkg_check_modules_custom(PROTOBUF protobuf "./ext/protobuf/${BUILD_DIR_NAME}")
-pkg_check_modules_custom(FMTLIB fmt "./ext/fmt/${BUILD_DIR_NAME}")
-find_library(VST3_SDK_LIB "sdk" PATHS "./ext/vst3sdk/${BUILD_DIR_NAME}/lib/${CAPITAL_CONFIG_NAME}")
-find_library(VST3_BASE_LIB "base" PATHS "./ext/vst3sdk/${BUILD_DIR_NAME}/lib/${CAPITAL_CONFIG_NAME}")
+find_library(PORTAUDIO_LIB "libportaudio.a" PATHS "./ext/portaudio/${BUILD_DIR_NAME}/install/lib" NO_DEFAULT_PATH)
+find_library(PROTOBUF_LIB "protobuf" PATHS "./ext/protobuf/${BUILD_DIR_NAME}/install/lib" NO_DEFAULT_PATH)
+find_library(FMT_LIB NAMES "fmt" "fmtd" PATHS "./ext/fmt/${BUILD_DIR_NAME}/install/lib" NO_DEFAULT_PATH)
+find_library(VST3_SDK_LIB "sdk" PATHS "./ext/vst3sdk/${BUILD_DIR_NAME}/lib/${CAPITAL_CONFIG_NAME}" NO_DEFAULT_PATH)
+find_library(VST3_BASE_LIB "base" PATHS "./ext/vst3sdk/${BUILD_DIR_NAME}/lib/${CAPITAL_CONFIG_NAME}" NO_DEFAULT_PATH)
 
 # set source directories
 set(SOURCE_DIR_LIST
@@ -147,30 +138,24 @@ endif()
 set_target_properties(${PROJECT_NAME} PROPERTIES XCODE_ATTRIBUTE_GCC_PREFIX_HEADER "Vst3HostDemo/prefix.hpp")
 set_target_properties(${PROJECT_NAME} PROPERTIES XCODE_ATTRIBUTE_GCC_PRECOMPILE_PREFIX_HEADER "YES")
 
-include_directories(
-  "./Vst3HostDemo"
-  "./ext/vst3sdk"
-  "./ext/variant/include"
-  "./schema/cpp"
-  ${PORTAUDIO_INCLUDE_DIRS}
-  ${PROTOBUF_INCLUDE_DIRS}
-  ${FMTLIB_INCLUDE_DIRS}
+target_include_directories(
+  ${PROJECT_NAME}
+  PRIVATE "./Vst3HostDemo"
+  PRIVATE "./ext/vst3sdk"
+  PRIVATE "./ext/variant/include"
+  PRIVATE "./schema/cpp"
+  PRIVATE "./ext/portaudio/${BUILD_DIR_NAME}/install/include"
+  PRIVATE "./ext/protobuf/${BUILD_DIR_NAME}/install/include"
+  PRIVATE "./ext/fmt/${BUILD_DIR_NAME}/install/include"
   )
-
-link_directories(
-  ${PORTAUDIO_LIBRARY_DIRS}
-  ${PROTOBUF_LIBRARY_DIRS}
-  ${FMTLIB_LIBRARY_DIRS}
-  )
-
 
 target_link_libraries(
   ${PROJECT_NAME}
   ${VST3_SDK_LIB}
   ${VST3_BASE_LIB}
-  ${PORTAUDIO_LIBRARIES}
-  ${PROTOBUF_LIBRARIES}
-  ${FMTLIB_LIBRARIES}
+  ${PORTAUDIO_LIB}
+  ${PROTOBUF_LIB}
+  ${FMT_LIB}
   "-framework CoreServices"
   "-framework CoreFoundation"
   "-framework AudioUnit"
