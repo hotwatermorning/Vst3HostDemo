@@ -70,7 +70,7 @@ find_package(PkgConfig REQUIRED)
 function(pkg_check_modules_custom PREFIX MODULE PKG_CONFIG_PATH)
   get_filename_component(PKG_CONFIG_PATH ${PKG_CONFIG_PATH} ABSOLUTE)
   set(ENV{PKG_CONFIG_PATH} "${PKG_CONFIG_PATH}")
-  pkg_check_modules(${PREFIX} REQUIRED "${MODULE}")
+  pkg_check_modules(${PREFIX} REQUIRED NO_CMAKE_PATH NO_CMAKE_ENVIRONMENT_PATH "${MODULE}")
   message("${PREFIX}: ${${PREFIX}_INCLUDE_DIRS} ${${PREFIX}_LIBRARIES} ${${PREFIX}_LIBRARY_DIRS}")
 endfunction()
 
