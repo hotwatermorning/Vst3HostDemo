@@ -74,9 +74,9 @@ function(pkg_check_modules_custom PREFIX MODULE PKG_CONFIG_PATH)
   message("${PREFIX}: ${${PREFIX}_INCLUDE_DIRS} ${${PREFIX}_LIBRARIES} ${${PREFIX}_LIBRARY_DIRS}")
 endfunction()
 
-pkg_check_modules_custom(PORTAUDIO portaudio-2.0 "./ext/portaudio/build_debug")
-pkg_check_modules_custom(PROTOBUF protobuf "./ext/protobuf/build_debug")
-pkg_check_modules_custom(FMTLIB fmt "./ext/fmt/build_debug")
+pkg_check_modules_custom(PORTAUDIO portaudio-2.0 "./ext/portaudio/${BUILD_DIR_NAME}")
+pkg_check_modules_custom(PROTOBUF protobuf "./ext/protobuf/${BUILD_DIR_NAME}")
+pkg_check_modules_custom(FMTLIB fmt "./ext/fmt/${BUILD_DIR_NAME}")
 find_library(VST3_SDK_LIB "sdk" PATHS "./ext/vst3sdk/${BUILD_DIR_NAME}/lib/${CAPITAL_CONFIG_NAME}")
 find_library(VST3_BASE_LIB "base" PATHS "./ext/vst3sdk/${BUILD_DIR_NAME}/lib/${CAPITAL_CONFIG_NAME}")
 
