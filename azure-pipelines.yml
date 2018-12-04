@@ -6,7 +6,7 @@ jobs:
     vmImage: 'macOS-10.13'
   timeoutInMinutes: 120
   steps:
-  - script: brew install libtool automake && cd gradle && ./gradlew build_all -Pconfig=Release
+  - script: brew install pkg-config libtool automake && cd gradle && ./gradlew build_all -Pconfig=Release
   - task: PublishBuildArtifacts@1
     inputs:
       pathtoPublish: '$(System.DefaultWorkingDirectory)/build_release/Release'
