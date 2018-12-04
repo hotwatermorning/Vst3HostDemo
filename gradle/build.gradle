@@ -232,7 +232,7 @@ build_fmtlib.mustRunAfter update_submodules
 
 task compile_schemas {
   doLast {
-    def protoc = "./ext/protobuf/${build_dir_name}/install/bin/protoc"
+    def protoc = file("../ext/protobuf/${build_dir_name}/install/bin/protoc").getAbsolutePath()
     assert(file(protoc).exists())
 
     execute("mkdir -p schema/cpp", "..")
