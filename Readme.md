@@ -1,5 +1,7 @@
 # Vst3HostDemo
 
+**This project has been moved to [Terra](https://github.com/hotwatermorning/Terra)**
+
 ## What's this?
 
 A Demo application which hosts vst3 plugins.
